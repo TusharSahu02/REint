@@ -19,16 +19,12 @@ import type {
 } from '../api/types'
 import { apiBase } from '../api/client'
 import DataQualityBanner from '../components/DataQualityBanner'
+import { SkeletonPanel, SkeletonRows, SkeletonStats, SkeletonStatus } from '../components/Skeleton'
 import { useAccuracy, useAppConfig } from '../hooks/useApi'
+import { fmtDay, useTimezone } from '../tz'
 
 const num = (v: number | null | undefined): string =>
   v == null ? '–' : v.toLocaleString('en-GB', { maximumFractionDigits: 1 })
-
-const dayFmt = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/London',
-  day: '2-digit',
-  month: 'short',
-})
 
 const binLabel = (b: HistogramBin): string => `${Math.round(b.bin_start_mw)}..${Math.round(b.bin_end_mw)}`
 
@@ -48,6 +44,7 @@ export default function Accuracy() {
   const [params, setParams] = useSearchParams()
   const config = useAppConfig()
   const cfg = config.data
+  const tz = useTimezone()
 
   const start = params.get('start') ?? cfg?.delivery_start ?? ''
   const end = params.get('end') ?? cfg?.delivery_end ?? ''
@@ -134,7 +131,35 @@ export default function Accuracy() {
         </div>
       )}
 
-      {accuracy.isPending && enabled && <p className="loading">Loading accuracy…</p>}
+      {accuracy.isPending && enabled && (
+        <>
+          <SkeletonStatus label="Loading accuracy" />
+          <div className="section-head">
+            <h2>Overall</h2>
+          </div>
+          <SkeletonStats n={7} />
+          <div className="section-head">
+            <h2>Cutoff effect</h2>
+          </div>
+          <SkeletonRows rows={3} cols={6} />
+          <div className="section-head">
+            <h2>Forecast vs actual over the range</h2>
+          </div>
+          <SkeletonPanel h={320} />
+          <div className="section-head">
+            <h2>Error distribution</h2>
+          </div>
+          <SkeletonPanel h={260} />
+          <div className="section-head">
+            <h2>Error by hour of day</h2>
+          </div>
+          <SkeletonPanel h={260} />
+          <div className="section-head">
+            <h2>Error by forecast horizon</h2>
+          </div>
+          <SkeletonPanel h={260} />
+        </>
+      )}
       {accuracy.isError && <p className="error">Failed to load: {accuracy.error.message}</p>}
 
       {data && (
@@ -209,7 +234,7 @@ export default function Accuracy() {
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={byDay} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.9 0.013 245)" vertical={false} />
-                    <XAxis dataKey="delivery_date" tickFormatter={(d: string) => dayFmt.format(new Date(d))} tick={{ fontSize: 11 }} stroke="oklch(0.5 0.026 252)" />
+                    <XAxis dataKey="delivery_date" tickFormatter={(d: string) => fmtDay(d, 'Europe/London')} tick={{ fontSize: 11 }} stroke="oklch(0.5 0.026 252)" />
                     <YAxis width={64} tick={{ fontSize: 12 }} stroke="oklch(0.5 0.026 252)" tickFormatter={(v: number) => v.toLocaleString('en-GB')} />
                     <Tooltip labelFormatter={(d) => String(d)} separator="· " />
                     <Legend />
@@ -231,7 +256,7 @@ export default function Accuracy() {
                 <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.9 0.013 245)" vertical={false} />
                 <XAxis
                   dataKey="start_time"
-                  tickFormatter={(t: string) => dayFmt.format(new Date(t))}
+                  tickFormatter={(t: string) => fmtDay(t, tz)}
                   minTickGap={64}
                   tick={{ fontSize: 11 }}
                   stroke="oklch(0.5 0.026 252)"

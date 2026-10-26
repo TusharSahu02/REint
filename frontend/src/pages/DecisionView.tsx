@@ -2,20 +2,13 @@ import { useSearchParams } from 'react-router-dom'
 import type { DecisionRow } from '../api/types'
 import ForecastChart from '../components/ForecastChart'
 import DataQualityBanner from '../components/DataQualityBanner'
+import { SkeletonPanel, SkeletonRows, SkeletonStats, SkeletonStatus } from '../components/Skeleton'
+import { fmtDateTime, fmtTime, useTimezone } from '../tz'
 import { apiBase } from '../api/client'
 import { useAppConfig, useDecisionForecast } from '../hooks/useApi'
 
-const slotFmt = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/London',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
 const num = (v: number | null | undefined): string =>
   v == null ? '–' : v.toLocaleString('en-GB', { maximumFractionDigits: 1 })
-
-const utc = (iso: string | null): string =>
-  iso == null ? '–' : `${iso.slice(0, 16).replace('T', ' ')}Z`
 
 
 function Stat({
@@ -45,6 +38,7 @@ export default function DecisionView() {
   const [params, setParams] = useSearchParams()
   const config = useAppConfig()
   const cfg = config.data
+  const tz = useTimezone()
 
   const date = params.get('date') ?? cfg?.delivery_start ?? ''
   const cutoff = params.get('cutoff') ?? cfg?.cutoff_local_time ?? null
@@ -112,7 +106,20 @@ export default function DecisionView() {
       )}
       {dateValid && !cutoffValid && <div className="banner">Cutoff must be a local time like 09:00.</div>}
 
-      {decision.isPending && enabled && <p className="loading">Loading forecast…</p>}
+      {decision.isPending && enabled && (
+        <>
+          <SkeletonStatus label="Loading forecast" />
+          <SkeletonStats n={4} />
+          <div className="section-head">
+            <h2>Forecast vs actual</h2>
+          </div>
+          <SkeletonPanel h={360} lines={2} />
+          <div className="section-head">
+            <h2>Slots</h2>
+          </div>
+          <SkeletonRows rows={8} cols={6} />
+        </>
+      )}
       {decision.isError && <p className="error">Failed to load: {decision.error.message}</p>}
 
       {decision.data && summary && (
@@ -146,12 +153,16 @@ export default function DecisionView() {
           <div className="section-head">
             <h2>Forecast vs actual</h2>
             <span className="muted">
-              {decision.data.delivery_date} · snapshot {decision.data.cutoff_local} · latest publish
-              used {summary.latest_publish_time_used ?? 'none'}
+              {decision.data.delivery_date} · snapshot{' '}
+              {fmtDateTime(decision.data.cutoff_local, 'Europe/London')} Europe/London (
+              {fmtTime(decision.data.cutoff_utc, tz)} {tz}) · latest publish used{' '}
+              {summary.latest_publish_time_used
+                ? `${fmtDateTime(summary.latest_publish_time_used, tz)} ${tz}`
+                : 'none'}
             </span>
           </div>
           <section className="section-body">
-            <ForecastChart rows={rows} bufferMw={summary.suggested_buffer_mw} />
+            <ForecastChart rows={rows} bufferMw={summary.suggested_buffer_mw} tz={tz} />
             {summary.suggested_buffer_mw != null && (
               <p className="caption">
                 Conservative wind = forecast − {num(summary.suggested_buffer_mw)} MW (P90 of positive
@@ -173,9 +184,9 @@ export default function DecisionView() {
               <table>
                 <thead>
                   <tr>
-                    <th>Slot (local)</th>
+                    <th>Slot ({tz})</th>
                     <th className="n">Forecast MW</th>
-                    <th>Publish (UTC)</th>
+                    <th>Publish ({tz})</th>
                     <th className="n">Actual MW</th>
                     <th className="n">Error MW</th>
                     <th>Flags</th>
@@ -184,9 +195,9 @@ export default function DecisionView() {
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.start_time} className={r.flags.length ? 'row-flagged' : ''}>
-                      <td>{slotFmt.format(new Date(r.start_time))}</td>
+                      <td>{fmtTime(r.start_time, tz)}</td>
                       <td className="n">{num(r.forecast_mw)}</td>
-                      <td>{utc(r.publish_time)}</td>
+                      <td>{r.publish_time ? fmtDateTime(r.publish_time, tz) : '–'}</td>
                       <td className="n">{num(r.actual_mw)}</td>
                       <td className="n">{num(r.error_mw)}</td>
                       <td>{r.flags.join(', ') || '–'}</td>

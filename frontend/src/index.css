@@ -15,6 +15,7 @@
   --warn-bg: oklch(0.965 0.045 88);
   --warn-border: oklch(0.78 0.11 80);
   --warn-ink: oklch(0.44 0.09 70);
+  --skel: oklch(0.925 0.012 245);
 
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 14px;
@@ -64,6 +65,28 @@ body {
 
 .brand svg {
   display: block;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.tz-select {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: border-color 150ms ease-out;
+}
+
+.tz-select:hover {
+  border-color: var(--border-strong);
 }
 
 .topbar nav {
@@ -182,9 +205,14 @@ main {
 
 .section-head h2 {
   margin: 0;
+  flex: 0 0 auto;
   font-size: 15px;
   font-weight: 650;
   letter-spacing: -0.01em;
+}
+
+.section-head .muted {
+  text-align: right;
 }
 
 .section-body {
@@ -494,6 +522,54 @@ th.n {
   }
 }
 
+/* ---------- skeletons ---------- */
+
+.skel {
+  display: block;
+  background: var(--skel);
+  animation: skel-pulse 1.5s ease-in-out infinite;
+}
+
+.skel-gap {
+  height: 10px;
+}
+
+.skel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.skel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skel-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@keyframes skel-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.95; }
+}
+
 /* ---------- states ---------- */
 
 .loading {
@@ -514,6 +590,10 @@ th.n {
 @media (prefers-reduced-motion: reduce) {
   .loading {
     animation: none;
+  }
+  .skel {
+    animation: none;
+    opacity: 0.7;
   }
   * {
     transition: none !important;
