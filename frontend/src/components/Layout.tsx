@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { TIMEZONES, setTimezone, useTimezone } from '../tz'
 
 function Mark() {
   return (
@@ -19,6 +20,7 @@ function Mark() {
 }
 
 export default function Layout() {
+  const tz = useTimezone()
   return (
     <div className="app">
       <header className="topbar">
@@ -26,13 +28,28 @@ export default function Layout() {
           <Mark />
           Wind Forecast Monitor
         </div>
-        <nav>
-          <NavLink to="/" end>
-            Decision view
-          </NavLink>
-          <NavLink to="/accuracy">Accuracy</NavLink>
-          <NavLink to="/methodology">Methodology</NavLink>
-        </nav>
+        <div className="topbar-right">
+          <nav>
+            <NavLink to="/" end>
+              Decision view
+            </NavLink>
+            <NavLink to="/accuracy">Accuracy</NavLink>
+            <NavLink to="/methodology">Methodology</NavLink>
+          </nav>
+          <select
+            className="tz-select"
+            value={tz}
+            onChange={(e) => setTimezone(e.target.value)}
+            aria-label="Display timezone"
+            title="Times shown in this timezone. The decision cutoff stays 09:00 Europe/London."
+          >
+            {TIMEZONES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
       <main>
         <Outlet />

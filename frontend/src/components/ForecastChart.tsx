@@ -1,11 +1,6 @@
 import { Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { DecisionRow } from '../api/types'
-
-const timeFmt = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/London',
-  hour: '2-digit',
-  minute: '2-digit',
-})
+import { fmtDateTime, fmtTime } from '../tz'
 
 interface ChartPoint {
   time: string
@@ -21,17 +16,19 @@ const fmt = (v: number | null | undefined): string =>
 export default function ForecastChart({
   rows,
   bufferMw,
+  tz,
 }: {
   rows: DecisionRow[]
   bufferMw: number | null
+  tz: string
 }) {
   const data: ChartPoint[] = rows.map((r) => ({
-    time: timeFmt.format(new Date(r.start_time)),
+    time: fmtTime(r.start_time, tz),
     forecast: r.forecast_mw,
     actual: r.actual_mw,
     conservative:
       r.forecast_mw != null && bufferMw != null ? r.forecast_mw - bufferMw : null,
-    publish: r.publish_time,
+    publish: r.publish_time ? fmtDateTime(r.publish_time, tz) : null,
   }))
   const ticks = data.filter((_, i) => i % 6 === 0).map((d) => d.time)
 
