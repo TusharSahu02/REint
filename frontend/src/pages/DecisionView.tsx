@@ -18,11 +18,25 @@ const utc = (iso: string | null): string =>
   iso == null ? '–' : `${iso.slice(0, 16).replace('T', ' ')}Z`
 
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  note,
+  unit,
+}: {
+  label: string
+  value: string
+  note?: string
+  unit?: string
+}) {
   return (
-    <div className="kpi">
-      <div className="kpi-value">{value}</div>
-      <div className="kpi-label">{label}</div>
+    <div className="stat">
+      <div className="stat-value">
+        {value}
+        {unit && <small>{unit}</small>}
+      </div>
+      <div className="stat-label">{label}</div>
+      {note && <div className="stat-note">{note}</div>}
     </div>
   )
 }
@@ -43,6 +57,7 @@ export default function DecisionView() {
 
   const decision = useDecisionForecast(date, cutoff, enabled)
   const rows: DecisionRow[] = decision.data?.rows ?? []
+  const summary = decision.data?.summary
 
   const setParam = (key: 'date' | 'cutoff', value: string) => {
     setParams((prev) => {
@@ -54,7 +69,15 @@ export default function DecisionView() {
 
   return (
     <>
-      <section className="controls card">
+      <div className="page-head">
+        <h1>Decision view</h1>
+        <span className="provenance">
+          Cutoff is 09:00 {cfg?.timezone ?? 'Europe/London'} on the day before delivery; every number
+          below was knowable by then.
+        </span>
+      </div>
+
+      <section className="toolbar">
         <label>
           Delivery day
           <input
@@ -89,67 +112,72 @@ export default function DecisionView() {
       )}
       {dateValid && !cutoffValid && <div className="banner">Cutoff must be a local time like 09:00.</div>}
 
-      {decision.isPending && enabled && <p>Loading…</p>}
+      {decision.isPending && enabled && <p className="loading">Loading forecast…</p>}
       {decision.isError && <p className="error">Failed to load: {decision.error.message}</p>}
 
-      {decision.data && (
+      {decision.data && summary && (
         <>
           <DataQualityBanner
-            nMissingForecast={decision.data.summary.n_missing_forecast}
-            nMissingActual={decision.data.summary.n_missing_actual}
+            nMissingForecast={summary.n_missing_forecast}
+            nMissingActual={summary.n_missing_actual}
           />
 
-          <section className="kpis">
-            <Kpi label="MAE (MW)" value={num(decision.data.summary.mae_mw)} />
-            <Kpi label="RMSE (MW)" value={num(decision.data.summary.rmse_mw)} />
-            <Kpi
-              label="Bias (mean error, MW)"
-              value={num(decision.data.summary.bias_mw)}
+          <section className="stats">
+            <Stat label="MAE" value={num(summary.mae_mw ?? null)} unit="MW" note="mean |error|" />
+            <Stat label="RMSE" value={num(summary.rmse_mw ?? null)} unit="MW" note="penalises big misses" />
+            <Stat
+              label="Bias"
+              value={num(summary.bias_mw ?? null)}
+              unit="MW"
+              note="mean error, + = over-forecast"
             />
-            <Kpi
-              label="Suggested buffer (MW)"
-              value={
-                num(decision.data.summary.suggested_buffer_mw) +
-                (decision.data.summary.buffer_basis === 'full_period_fallback'
-                  ? ' (full-period fallback)'
-                  : '')
+            <Stat
+              label="Suggested buffer"
+              value={num(summary.suggested_buffer_mw ?? null)}
+              unit="MW"
+              note={
+                summary.buffer_basis === 'full_period_fallback'
+                  ? 'P90 of positive errors, full-period fallback'
+                  : `P90 of positive errors, ${summary.buffer_sample_size} prior slots`
               }
             />
           </section>
 
-          <section className="card">
-            <h2>
-              Forecast vs actual — {decision.data.delivery_date}
-            </h2>
-            <p className="muted">
-              Snapshot as of {decision.data.cutoff_local}; latest publish used:{' '}
-              {decision.data.summary.latest_publish_time_used ?? 'none'}
-            </p>
-            <ForecastChart
-              rows={rows}
-              bufferMw={decision.data.summary.suggested_buffer_mw}
-            />
-            {decision.data.summary.suggested_buffer_mw != null && (
-              <p className="muted">
-                Conservative wind = forecast − buffer ({num(decision.data.summary.suggested_buffer_mw)}{' '}
-                MW = P90 of positive errors from the {decision.data.summary.buffer_sample_size} slots on days
-                before this one{decision.data.summary.buffer_basis === 'full_period_fallback' ? ', full-period fallback' : ''}).
+          <div className="section-head">
+            <h2>Forecast vs actual</h2>
+            <span className="muted">
+              {decision.data.delivery_date} · snapshot {decision.data.cutoff_local} · latest publish
+              used {summary.latest_publish_time_used ?? 'none'}
+            </span>
+          </div>
+          <section className="section-body">
+            <ForecastChart rows={rows} bufferMw={summary.suggested_buffer_mw} />
+            {summary.suggested_buffer_mw != null && (
+              <p className="caption">
+                Conservative wind = forecast − {num(summary.suggested_buffer_mw)} MW (P90 of positive
+                errors from the {summary.buffer_sample_size} slots on days before this one
+                {summary.buffer_basis === 'full_period_fallback' ? ', full-period fallback' : ''}).
                 Indicative only.
               </p>
             )}
           </section>
 
-          <section className="card">
-            <h2>Slots ({decision.data.summary.n_slots})</h2>
+          <div className="section-head">
+            <h2>Slots</h2>
+            <span className="muted">
+              {summary.n_slots} half-hours · amber rows carry flags (missing forecast or actual)
+            </span>
+          </div>
+          <section className="section-body">
             <div className="scrollbox">
               <table>
                 <thead>
                   <tr>
                     <th>Slot (local)</th>
-                    <th>Forecast MW</th>
+                    <th className="n">Forecast MW</th>
                     <th>Publish (UTC)</th>
-                    <th>Actual MW</th>
-                    <th>Error MW</th>
+                    <th className="n">Actual MW</th>
+                    <th className="n">Error MW</th>
                     <th>Flags</th>
                   </tr>
                 </thead>
@@ -157,10 +185,10 @@ export default function DecisionView() {
                   {rows.map((r) => (
                     <tr key={r.start_time} className={r.flags.length ? 'row-flagged' : ''}>
                       <td>{slotFmt.format(new Date(r.start_time))}</td>
-                      <td>{num(r.forecast_mw)}</td>
+                      <td className="n">{num(r.forecast_mw)}</td>
                       <td>{utc(r.publish_time)}</td>
-                      <td>{num(r.actual_mw)}</td>
-                      <td>{num(r.error_mw)}</td>
+                      <td className="n">{num(r.actual_mw)}</td>
+                      <td className="n">{num(r.error_mw)}</td>
                       <td>{r.flags.join(', ') || '–'}</td>
                     </tr>
                   ))}

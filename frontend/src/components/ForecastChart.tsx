@@ -65,7 +65,7 @@ export default function ForecastChart({
           type="stepAfter"
           dataKey="forecast"
           name="Decision forecast (MW)"
-          stroke="#2563eb"
+          stroke="oklch(0.55 0.11 240)"
           strokeWidth={2}
           dot={false}
           connectNulls={false}
@@ -74,7 +74,7 @@ export default function ForecastChart({
           type="monotone"
           dataKey="actual"
           name="Actual (MW)"
-          stroke="#b45309"
+          stroke="oklch(0.63 0.13 65)"
           strokeWidth={2}
           dot={false}
           connectNulls={false}
@@ -83,7 +83,7 @@ export default function ForecastChart({
           type="stepAfter"
           dataKey="conservative"
           name="Conservative wind (MW)"
-          stroke="#6b7280"
+          stroke="oklch(0.55 0.02 250)"
           strokeWidth={2}
           strokeDasharray="6 4"
           dot={false}

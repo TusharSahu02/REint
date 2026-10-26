@@ -13,7 +13,6 @@ import {
 } from 'recharts'
 import type {
   AccuracyByDay,
-  AccuracyOverall,
   Basis,
   HistogramBin,
   HourEntry,
@@ -33,29 +32,15 @@ const dayFmt = new Intl.DateTimeFormat('en-GB', {
 
 const binLabel = (b: HistogramBin): string => `${Math.round(b.bin_start_mw)}..${Math.round(b.bin_end_mw)}`
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
-    <div className="kpi">
-      <div className="kpi-value">{value}</div>
-      <div className="kpi-label">{label}</div>
-    </div>
-  )
-}
-
-function OverallKpis({ m, caption }: { m: AccuracyOverall; caption: string }) {
-  return (
-    <section className="card">
-      <h2>{caption}</h2>
-      <div className="kpis">
-        <Kpi label="Valid slots (n)" value={num(m.n)} />
-        <Kpi label="MAE (MW)" value={num(m.mae_mw)} />
-        <Kpi label="RMSE (MW)" value={num(m.rmse_mw)} />
-        <Kpi label="Bias, mean error (MW)" value={num(m.bias_mw)} />
-        <Kpi label="nMAE (% of mean actual)" value={m.nmae_pct == null ? '–' : `${num(m.nmae_pct)}%`} />
-        <Kpi label="P90 |error| (MW)" value={num(m.p90_abs_error_mw)} />
-        <Kpi label="P95 |error| (MW)" value={num(m.p95_abs_error_mw)} />
+    <div className="stat">
+      <div className="stat-value">
+        {value}
+        {unit && <small>{unit}</small>}
       </div>
-    </section>
+      <div className="stat-label">{label}</div>
+    </div>
   )
 }
 
@@ -99,7 +84,14 @@ export default function Accuracy() {
 
   return (
     <>
-      <section className="controls card">
+      <div className="page-head">
+        <h1>Accuracy</h1>
+        <span className="provenance">
+          Elexon national wind, error = forecast − actual, positive = over-forecast.
+        </span>
+      </div>
+
+      <section className="toolbar">
         <label>
           From (delivery day)
           <input
@@ -142,12 +134,25 @@ export default function Accuracy() {
         </div>
       )}
 
-      {accuracy.isPending && enabled && <p>Loading…</p>}
+      {accuracy.isPending && enabled && <p className="loading">Loading accuracy…</p>}
       {accuracy.isError && <p className="error">Failed to load: {accuracy.error.message}</p>}
 
       {data && (
         <>
-          <OverallKpis m={data.overall} caption={`Accuracy — decision-time basis, ${data.range.start} to ${data.range.end}`} />
+          <div className="section-head">
+            <h2>Overall, {data.range.start} to {data.range.end}</h2>
+            <span className="muted">basis: {data.basis === 'decision' ? 'decision-time' : 'all horizons'}</span>
+          </div>
+          <section className="stats">
+            <Stat label="Valid slots" value={num(data.overall.n)} />
+            <Stat label="MAE" value={num(data.overall.mae_mw)} unit="MW" />
+            <Stat label="RMSE" value={num(data.overall.rmse_mw)} unit="MW" />
+            <Stat label="Bias" value={num(data.overall.bias_mw)} unit="MW" />
+            <Stat label="nMAE" value={data.overall.nmae_pct == null ? '–' : `${num(data.overall.nmae_pct)}`} unit="%" />
+            <Stat label="P90 abs error" value={num(data.overall.p90_abs_error_mw)} unit="MW" />
+            <Stat label="P95 abs error" value={num(data.overall.p95_abs_error_mw)} unit="MW" />
+          </section>
+
           {data.overall.n_missing_forecast + data.overall.n_missing_actual > 0 && (
             <DataQualityBanner
               nMissingForecast={data.overall.n_missing_forecast}
@@ -156,118 +161,143 @@ export default function Accuracy() {
           )}
 
           {data.basis === 'decision' && data.naive_overall && (
-            <section className="card naive">
-              <h2>Leakage check — decision-time vs naive (no cutoff)</h2>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Basis</th>
-                    <th>MAE (MW)</th>
-                    <th>Bias (MW)</th>
-                    <th>nMAE (% mean actual)</th>
-                    <th>P90 |error| (MW)</th>
-                    <th>n</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Decision-time (usable)</td>
-                    <td>{num(data.overall.mae_mw)}</td>
-                    <td>{num(data.overall.bias_mw)}</td>
-                    <td>{data.overall.nmae_pct == null ? '–' : num(data.overall.nmae_pct)}</td>
-                    <td>{num(data.overall.p90_abs_error_mw)}</td>
-                    <td>{num(data.overall.n)}</td>
-                  </tr>
-                  <tr>
-                    <td>Naive (not usable)</td>
-                    <td>{num(data.naive_overall.mae_mw)}</td>
-                    <td>{num(data.naive_overall.bias_mw)}</td>
-                    <td>{data.naive_overall.nmae_pct == null ? '–' : num(data.naive_overall.nmae_pct)}</td>
-                    <td>{num(data.naive_overall.p90_abs_error_mw)}</td>
-                    <td>{num(data.naive_overall.n)}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p className="muted">
-                Naive numbers look better because they use forecasts the buyer did not yet have.
-              </p>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={byDay} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="delivery_date" tickFormatter={(d: string) => dayFmt.format(new Date(d))} tick={{ fontSize: 11 }} />
-                  <YAxis width={64} tick={{ fontSize: 12 }} tickFormatter={(v: number) => v.toLocaleString('en-GB')} />
-                  <Tooltip labelFormatter={(d) => String(d)} />
-                  <Legend />
-                  <Bar dataKey="mae_mw" name="Decision MAE (MW)" fill="#2563eb" />
-                  <Bar dataKey="naive_mae_mw" name="Naive MAE (MW)" fill="#93c5fd" />
-                </BarChart>
-              </ResponsiveContainer>
-            </section>
+            <>
+              <div className="section-head">
+                <h2>Cutoff effect</h2>
+                <span className="muted">decision-time vs naive (latest forecast ever published)</span>
+              </div>
+              <section className="section-body">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Basis</th>
+                      <th className="n">MAE MW</th>
+                      <th className="n">Bias MW</th>
+                      <th className="n">nMAE %</th>
+                      <th className="n">P90 abs err MW</th>
+                      <th className="n">n</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        Decision-time{' '}
+                        <span className="pill usable">usable</span>
+                      </td>
+                      <td className="n">{num(data.overall.mae_mw)}</td>
+                      <td className="n">{num(data.overall.bias_mw)}</td>
+                      <td className="n">{data.overall.nmae_pct == null ? '–' : num(data.overall.nmae_pct)}</td>
+                      <td className="n">{num(data.overall.p90_abs_error_mw)}</td>
+                      <td className="n">{num(data.overall.n)}</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        Naive <span className="pill not-usable">not usable</span>
+                      </td>
+                      <td className="n">{num(data.naive_overall.mae_mw)}</td>
+                      <td className="n">{num(data.naive_overall.bias_mw)}</td>
+                      <td className="n">{data.naive_overall.nmae_pct == null ? '–' : num(data.naive_overall.nmae_pct)}</td>
+                      <td className="n">{num(data.naive_overall.p90_abs_error_mw)}</td>
+                      <td className="n">{num(data.naive_overall.n)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="caption">
+                  Naive numbers look better because they use forecasts the buyer did not yet have. Known
+                  from day one: 31 delivery days, 48 half-hour slots each.
+                </p>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={byDay} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.9 0.013 245)" vertical={false} />
+                    <XAxis dataKey="delivery_date" tickFormatter={(d: string) => dayFmt.format(new Date(d))} tick={{ fontSize: 11 }} stroke="oklch(0.5 0.026 252)" />
+                    <YAxis width={64} tick={{ fontSize: 12 }} stroke="oklch(0.5 0.026 252)" tickFormatter={(v: number) => v.toLocaleString('en-GB')} />
+                    <Tooltip labelFormatter={(d) => String(d)} separator="· " />
+                    <Legend />
+                    <Bar dataKey="mae_mw" name="Decision MAE (MW)" fill="oklch(0.55 0.11 240)" />
+                    <Bar dataKey="naive_mae_mw" name="Naive MAE (MW)" fill="oklch(0.72 0.022 250)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </section>
+            </>
           )}
 
-          <section className="card">
+          <div className="section-head">
             <h2>Forecast vs actual over the range</h2>
+            <span className="muted">half-hourly, {data.basis === 'decision' ? 'decision-time forecast' : 'every published forecast'}</span>
+          </div>
+          <section className="section-body">
             <ResponsiveContainer width="100%" height={320}>
               <LineChart data={data.timeseries} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.9 0.013 245)" vertical={false} />
                 <XAxis
                   dataKey="start_time"
                   tickFormatter={(t: string) => dayFmt.format(new Date(t))}
                   minTickGap={64}
                   tick={{ fontSize: 11 }}
+                  stroke="oklch(0.5 0.026 252)"
                 />
-                <YAxis width={64} tick={{ fontSize: 12 }} tickFormatter={(v: number) => v.toLocaleString('en-GB')} />
+                <YAxis width={64} tick={{ fontSize: 12 }} stroke="oklch(0.5 0.026 252)" tickFormatter={(v: number) => v.toLocaleString('en-GB')} />
                 <Tooltip
                   labelFormatter={(t) => String(t).slice(0, 16).replace('T', ' ') + 'Z'}
                   formatter={(v: unknown, n: unknown) => [num(typeof v === "number" ? v : null) + " MW", String(n)]}
+                  separator="· "
                 />
                 <Legend />
-                <Line type="linear" dataKey="forecast_mw" name="Forecast (MW)" stroke="#2563eb" dot={false} connectNulls={false} />
-                <Line type="linear" dataKey="actual_mw" name="Actual (MW)" stroke="#b45309" dot={false} connectNulls={false} />
+                <Line type="linear" dataKey="forecast_mw" name="Forecast (MW)" stroke="oklch(0.55 0.11 240)" dot={false} connectNulls={false} />
+                <Line type="linear" dataKey="actual_mw" name="Actual (MW)" stroke="oklch(0.63 0.13 65)" dot={false} connectNulls={false} />
               </LineChart>
             </ResponsiveContainer>
           </section>
 
-          <section className="card">
-            <h2>Error distribution (MW)</h2>
+          <div className="section-head">
+            <h2>Error distribution</h2>
+            <span className="muted">MW, over-forecast = under-buy</span>
+          </div>
+          <section className="section-body">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={hist} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={4} angle={-45} textAnchor="end" height={70} />
-                <YAxis width={48} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="count" name="Half-hours" fill="#2563eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.9 0.013 245)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={4} angle={-45} textAnchor="end" height={70} stroke="oklch(0.5 0.026 252)" />
+                <YAxis width={48} tick={{ fontSize: 12 }} stroke="oklch(0.5 0.026 252)" />
+                <Tooltip separator="· " />
+                <Bar dataKey="count" name="Half-hours" fill="oklch(0.55 0.11 240)" />
               </BarChart>
             </ResponsiveContainer>
-            <p className="muted">Error = forecast − actual; positive bins = over-forecast (buyer under-buys).</p>
+            <p className="caption">Error = forecast − actual; positive bins = over-forecast (buyer under-buys).</p>
           </section>
 
-          <section className="card">
-            <h2>Error by hour of day (Europe/London)</h2>
+          <div className="section-head">
+            <h2>Error by hour of day</h2>
+            <span className="muted">Europe/London, decision-time basis</span>
+          </div>
+          <section className="section-body">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={byHour} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="hour" tick={{ fontSize: 11 }} />
-                <YAxis width={64} tick={{ fontSize: 12 }} tickFormatter={(v: number) => v.toLocaleString('en-GB')} />
-                <Tooltip formatter={(v: unknown, n: unknown) => [num(typeof v === "number" ? v : null) + " MW", String(n)]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.9 0.013 245)" vertical={false} />
+                <XAxis dataKey="hour" tick={{ fontSize: 11 }} stroke="oklch(0.5 0.026 252)" />
+                <YAxis width={64} tick={{ fontSize: 12 }} stroke="oklch(0.5 0.026 252)" tickFormatter={(v: number) => v.toLocaleString('en-GB')} />
+                <Tooltip formatter={(v: unknown, n: unknown) => [num(typeof v === "number" ? v : null) + " MW", String(n)]} separator="· " />
                 <Legend />
-                <Bar dataKey="mae" name="MAE (MW)" fill="#2563eb" />
-                <Bar dataKey="bias" name="Bias (MW)" fill="#f59e0b" />
+                <Bar dataKey="mae" name="MAE (MW)" fill="oklch(0.78 0.055 240)" />
+                <Bar dataKey="bias" name="Bias (MW)" fill="oklch(0.58 0.15 35)" />
               </BarChart>
             </ResponsiveContainer>
           </section>
 
-          <section className="card">
-            <h2>Error by forecast horizon (all forecasts, any basis)</h2>
+          <div className="section-head">
+            <h2>Error by forecast horizon</h2>
+            <span className="muted">all forecasts, any basis</span>
+          </div>
+          <section className="section-body">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={byHorizon} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
-                <YAxis width={64} tick={{ fontSize: 12 }} tickFormatter={(v: number) => v.toLocaleString('en-GB')} />
-                <Tooltip formatter={(v: unknown, n: unknown) => [num(typeof v === "number" ? v : null) + " MW", String(n)]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.9 0.013 245)" vertical={false} />
+                <XAxis dataKey="bucket" tick={{ fontSize: 11 }} stroke="oklch(0.5 0.026 252)" />
+                <YAxis width={64} tick={{ fontSize: 12 }} stroke="oklch(0.5 0.026 252)" tickFormatter={(v: number) => v.toLocaleString('en-GB')} />
+                <Tooltip formatter={(v: unknown, n: unknown) => [num(typeof v === "number" ? v : null) + " MW", String(n)]} separator="· " />
                 <Legend />
-                <Bar dataKey="mae" name="MAE (MW)" fill="#2563eb" />
-                <Bar dataKey="bias" name="Bias (MW)" fill="#f59e0b" />
+                <Bar dataKey="mae" name="MAE (MW)" fill="oklch(0.78 0.055 240)" />
+                <Bar dataKey="bias" name="Bias (MW)" fill="oklch(0.58 0.15 35)" />
               </BarChart>
             </ResponsiveContainer>
           </section>
