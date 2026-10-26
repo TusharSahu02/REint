@@ -10,21 +10,10 @@
 7. Update DOMAIN doc "Verified API facts" with real profile numbers; commit
 
 ## Log
-- M0: DONE (commit 30afc1d). Scaffold, venv py3.10.16, all VERIFY pass. Deviation: py3.12 unavailable locally; Docker (M7) pins 3.12-slim.
-- Pre-M1: API facts verified from OpenAPI spec + live calls, recorded in DOMAIN doc (commit 879dcc1). WINDFOR = HOURLY, irregular 2/3/4h publish cycles, day-scale chunks needed. Owner slot-mapping decision pending before M2.
-- M1: in progress.
-
-## Files changed (latest milestone)
-- backend/scripts/fetch_data.py (new)
-- backend/scripts/profile_data.py (new)
-- backend/data/{actuals,forecasts}.parquet (generated)
-- docs/DOMAIN_AND_ASSUMPTIONS.md (profile numbers appended)
-- PROGRESS.md
-
-## Commands run / results
-- python backend/scripts/fetch_data.py -> pending
-- python backend/scripts/profile_data.py -> pending
-- ls -la backend/data -> pending
+- M0: DONE (30afc1d). M1: DONE (d4c524f).
+- Pre-M1 facts (879dcc1): WINDFOR HOURLY, cadence 2/3/4h (mostly), day-scale chunks; FUELHH half-hourly, publish = slot + 30min.
+- M1 outputs: actuals.parquet 1488 rows (0 missing slots Jan); forecasts.parquet 20440 rows, 280 cycles, horizon −25.5/21.5/66.5h, 0 dups, 0 NaN.
+- Next: M2 core logic — BLOCKED on owner decision: WINDFOR hourly forecast → half-hour slot mapping (proposal in DOMAIN doc: hourly MW covers both slots of the hour).
 
 ## Open issues
 - WINDFOR hourly-vs-half-hourly slot mapping (owner decision before M2).
