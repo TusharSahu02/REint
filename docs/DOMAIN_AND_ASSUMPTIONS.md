@@ -72,7 +72,7 @@ Verified against the live OpenAPI spec (`https://data.elexon.co.uk/swagger/v1/sw
 - Path: `GET /datasets/WINDFOR/stream`
 - Verified params: `publishDateTimeFrom` / `publishDateTimeTo` (ISO 8601 with `Z`). No settlement-date filters.
 - Fields per row: `dataset, publishTime, startTime, generation`.
-- **Row granularity is HOURLY**: across all 18,104 rows for January 2026, not a single `startTime` had minutes=30. StartTimes run hourly (e.g. `21:00, 22:00, 23:00`).
+- **Row granularity is HOURLY**: across the whole snapshot (20,440 rows), not a single `startTime` had minutes ≠ 0. StartTimes run hourly (e.g. `21:00, 22:00, 23:00`).
 - Publish cycle: exactly 73 rows per `publishTime` (a rolling ~72h horizon window), and every row of a cycle shares one `publishTime`. January 2026 shows 248 distinct cycles; consecutive-cycle gaps are irregular and only ever 120 / 180 / 240 minutes (plus two one-off 175/185-min gaps), i.e. cycles are NOT on a fixed half-hourly schedule.
 - A ~1-hour publish window returned `[]` (unreliable below ~day-scale); use **day-size chunks** (`from` = day 00:00Z) for fetching. One month ≈ 18k rows per chunked month is fine.
 - Sample row:
@@ -81,18 +81,28 @@ Verified against the live OpenAPI spec (`https://data.elexon.co.uk/swagger/v1/sw
 ```
 
 ### Snapshot profile (measured from the committed parquet files, M1)
-- `actuals.parquet`: 1488 rows (WIND actuals 2026-01-01 00:00Z → 2026-01-31 23:30Z, 48 half-hour slots, 31 days), **0 missing slots**, `publishTime = startTime + 30 min` everywhere.
+- `actuals.parquet`: **1536 rows** (WIND actuals 2026-01-01 00:00Z → 2026-02-01 23:30Z, 48 half-hour slots, 32 days; covers delivery days 2 Jan → 1 Feb), **0 missing slots**, `publishTime = startTime + 30 min` everywhere.
 - `forecasts.parquet`: 20440 rows, startTimes 2025-12-27T21:00Z → 2026-02-02T21:00Z (rolling ~72h window), publishTimes 2025-12-28T02:30Z → 2026-01-31T22:30Z.
 - 280 distinct publish cycles; rows per cycle exactly 73; consecutive-cycle gaps in hours: 2.0 ×104, ~2.92 ×1, 3.0 ×70, ~3.08 ×1, 4.0 ×103 (median 3h). Never half-hourly cadence.
 - Horizon (start_time − publish_time, hours): min **−25.5** (rows published after the fact), median **21.5**, max **66.5**.
 - 0 duplicate (start_time, publish_time) pairs; no NaN values anywhere after normalisation.
 
 ### Snapshot fetch windows (implemented in scripts/fetch_data.py)
-- WINDFOR by publish-day chunk 2025-12-28 → 2026-02-01T00:00Z exclusive (35 requests × 584 rows).
-- FUELHH `settlementDateFrom=2026-01-01&settlementDateTo=2026-02-01&fuelType=WIND`, then kept only `startTime < 2026-02-01T00:00Z` → 1488 rows.
+- WINDFOR by publish-day chunk 2025-12-28 → 2026-02-01T00:00Z exclusive (35 requests × 584 rows; last cutoff is 31 Jan 09:00 LON, no later publishes needed).
+- FUELHH `settlementDateFrom=2026-01-01&settlementDateTo=2026-02-01&fuelType=WIND`, then kept only `startTime < 2026-02-02T00:00Z` → 1536 rows.
 
-### Inconsistency discovered (needs owner decision before M2)
-- DOMAIN doc expected half-hourly forecasts: **reality is hourly** WINDFOR. Proposal: each hourly `startTime` applies to that whole hour; both half-hour slots inherit the hourly MW (wind MW is average power over the hour). Effect: slot-level forecast has 24 distinct values/day. → decision slots still 48/day. Await owner confirmation before M2 metrics.
+### Hourly step-hold rule (verified raw data, owner-approved)
+- Checked every row of forecasts.parquet: **0 of 20,440 rows** had start_time minute or second ≠ 0. All cycles (earliest / middle / latest) are exactly 73 hourly rows spanning publish−5.5h → publish+66.5h.
+- Rule: each hourly forecast covers **both half-hour slots of its hour** (step-hold, no interpolation), implemented by a `expand_hourly_to_half_hourly` step when data loads (owner-supplied for M2). Forecast values repeat `HH:00`/`HH:30`.
+
+### Negative-horizon rule (owner-approved)
+- Rows with `horizon_hours < 0` (published after the target slot) are **kept** in forecasts.parquet.
+- Horizon analysis must exclude `horizon_hours < 0`.
+- Decision-time selection is unaffected: the `publish_time <= cutoff` filter rejects them.
+
+### Cutoff coverage check (standalone, scripts/profile_data.py)
+- For every delivery day 2026-01-02 → 2026-02-01: latest publish cycle with `publish_time <= (D-1 09:00 Europe/London → UTC)` covers **24/24 hourly slots** of the London delivery day.
+- Result: **31 of 31 days full coverage**, no short days. The chosen cycle was always the D-1 07:30Z publish (cadence guarantee: a publish always lands ≤ 09:00 UK time).
 
 ### Fetching rules (verified)
 - All datetimes ISO 8601 UTC with `Z` suffix (400 "DateTime should be in ISO format" otherwise).

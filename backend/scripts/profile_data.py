@@ -2,16 +2,59 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-ACTUAL_WINDOW = (pd.Timestamp("2026-01-01", tz="UTC"), pd.Timestamp("2026-02-01", tz="UTC"))
+ACTUAL_WINDOW = (pd.Timestamp("2026-01-01", tz="UTC"), pd.Timestamp("2026-02-02", tz="UTC"))
+TZ = "Europe/London"
+CUTOFF_LOCAL_TIME = datetime.strptime("09:00", "%H:%M").time()
 
 
 def fmt(df: pd.DataFrame, cols: list[str]) -> str:
     return df[cols].head(5).to_string(index=False)
+
+
+def coverage_check(forecasts: pd.DataFrame) -> None:
+    """Standalone check: latest publish cycle <= cutoff per delivery day covers how many hourly slots."""
+    print("\n== coverage check (per delivery day) ==")
+    zone = ZoneInfo(TZ)
+    shorts: list[str] = []
+    full = 0
+    delivery = date(2026, 1, 2)
+    while delivery <= date(2026, 2, 1):
+        cutoff = datetime.combine(delivery - timedelta(days=1), CUTOFF_LOCAL_TIME, tzinfo=zone).astimezone(ZoneInfo("UTC"))
+        chosen = forecasts[forecasts["publish_time"] <= pd.Timestamp(cutoff)]
+        if chosen.empty:
+            print(f"  D={delivery} cutoff={cutoff:%Y-%m-%T}Z: NO PUBLISH CYCLE <= cutoff")
+            shorts.append(delivery.isoformat())
+        else:
+            latest = chosen["publish_time"].max()
+            cycle = chosen[chosen["publish_time"] == latest]
+            local_day_start = datetime.combine(delivery, datetime.min.time(), tzinfo=zone)
+            local_day_end = datetime.combine(delivery + timedelta(days=1), datetime.min.time(), tzinfo=zone)
+            slot_stamps = pd.date_range(
+                local_day_start.astimezone(ZoneInfo("UTC")),
+                local_day_end.astimezone(ZoneInfo("UTC")),
+                freq="1h",
+                inclusive="left",
+            )
+            covered = int(cycle["start_time"].isin(slot_stamps).sum())
+            status = "OK" if covered == 24 else "SHORT"
+            print(f"  D={delivery} cutoff={cutoff:%Y-%m-%d %H:%MZ}: publish={latest} covered={covered}/24 {status}")
+            if covered == 24:
+                full += 1
+            else:
+                shorts.append(delivery.isoformat())
+        delivery += timedelta(days=1)
+    print(f"summary: {full} of 31 days full coverage (24/24)")
+    if shorts:
+        print(f"days below 24/24: {shorts}")
+    else:
+        print("days below 24/24: none")
 
 
 def main() -> None:
@@ -62,6 +105,8 @@ def main() -> None:
     print(fmt(actuals, ["start_time", "actual_mw"]))
     print("-- forecasts (5) --")
     print(fmt(forecasts, ["start_time", "publish_time", "forecast_mw"]))
+
+    coverage_check(forecasts)
 
 
 if __name__ == "__main__":

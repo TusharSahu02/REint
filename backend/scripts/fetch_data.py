@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 import time
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -17,8 +17,9 @@ import pandas as pd
 BASE_URL = "https://data.elexon.co.uk/bmrs/api/v1"
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
-WINDFOR_START = datetime(2025, 12, 28, tzinfo=UTC)
-WINDFOR_END = datetime(2026, 2, 1, tzinfo=UTC)
+WINDFOR_START = datetime(2025, 12, 28, tzinfo=timezone.utc)
+WINDFOR_END = datetime(2026, 2, 1, tzinfo=timezone.utc)
+ACTUALS_END = datetime(2026, 2, 2, tzinfo=timezone.utc)  # keep start_time < ACTUALS_END (delivery days 2 Jan .. 1 Feb)
 FUELHH_FIRST = date(2026, 1, 1)
 FUELHH_LAST = date(2026, 2, 1)  # settlement-date filter end (inclusive at the API)
 
@@ -92,7 +93,7 @@ def fetch_fuelhh(client: httpx.Client) -> pd.DataFrame:
     print(f"  FUELHH: {len(rows)} rows fetched, {len(wind_rows)} with fuelType=WIND", flush=True)
     cuts = [
         pd.Timestamp(FUELHH_FIRST.isoformat(), tz="UTC"),
-        pd.Timestamp(WINDFOR_END.isoformat().replace("T", " "), tz="UTC"),
+        pd.Timestamp(ACTUALS_END.isoformat().replace("T", " "), tz="UTC"),
     ]
     df = pd.DataFrame(
         {
