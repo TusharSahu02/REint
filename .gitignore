@@ -13,3 +13,4 @@ dist/
 # misc
 *.parquet
 .DS_Store
+.serena/
