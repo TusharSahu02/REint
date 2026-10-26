@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pandas
+pyarrow
+numpy
+httpx
+pydantic
+pydantic-settings
+tzdata
+pytest
+ruff
