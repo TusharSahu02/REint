@@ -19,7 +19,9 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 WINDFOR_START = datetime(2025, 12, 28, tzinfo=timezone.utc)
 WINDFOR_END = datetime(2026, 2, 1, tzinfo=timezone.utc)
-ACTUALS_END = datetime(2026, 2, 2, tzinfo=timezone.utc)  # keep start_time < ACTUALS_END (delivery days 2 Jan .. 1 Feb)
+ACTUALS_END = datetime(
+    2026, 2, 2, tzinfo=timezone.utc
+)  # keep start_time < ACTUALS_END (delivery days 2 Jan .. 1 Feb)
 FUELHH_FIRST = date(2026, 1, 1)
 FUELHH_LAST = date(2026, 2, 1)  # settlement-date filter end (inclusive at the API)
 
@@ -44,7 +46,9 @@ def get_with_retry(client: httpx.Client, path: str, params: dict[str, str]) -> l
         except (httpx.HTTPError, ValueError) as err:
             last_err = err
             wait = BACKOFF_S * attempt
-            print(f"  attempt {attempt}/{RETRIES} failed: {err}; retrying in {wait:.0f}s", flush=True)
+            print(
+                f"  attempt {attempt}/{RETRIES} failed: {err}; retrying in {wait:.0f}s", flush=True
+            )
             time.sleep(wait)
     raise RuntimeError(f"Fetch failed after {RETRIES} attempts: GET {path} {params}: {last_err}")
 
@@ -68,9 +72,15 @@ def fetch_windfor(client: httpx.Client) -> pd.DataFrame:
         time.sleep(SLEEP_BETWEEN_CALLS_S)
     df = pd.DataFrame(
         {
-            "start_time": pd.to_datetime([r.get("startTime") for r in rows], errors="coerce", utc=True),
-            "publish_time": pd.to_datetime([r.get("publishTime") for r in rows], errors="coerce", utc=True),
-            "forecast_mw": pd.to_numeric([r.get("generation") for r in rows], errors="coerce").astype("float64"),
+            "start_time": pd.to_datetime(
+                [r.get("startTime") for r in rows], errors="coerce", utc=True
+            ),
+            "publish_time": pd.to_datetime(
+                [r.get("publishTime") for r in rows], errors="coerce", utc=True
+            ),
+            "forecast_mw": pd.to_numeric(
+                [r.get("generation") for r in rows], errors="coerce"
+            ).astype("float64"),
         }
     )
     n_raw = len(df)
@@ -97,15 +107,24 @@ def fetch_fuelhh(client: httpx.Client) -> pd.DataFrame:
     ]
     df = pd.DataFrame(
         {
-            "start_time": pd.to_datetime([r.get("startTime") for r in wind_rows], errors="coerce", utc=True),
-            "publish_time": pd.to_datetime([r.get("publishTime") for r in wind_rows], errors="coerce", utc=True),
-            "generation": pd.to_numeric([r.get("generation") for r in wind_rows], errors="coerce").astype("float64"),
+            "start_time": pd.to_datetime(
+                [r.get("startTime") for r in wind_rows], errors="coerce", utc=True
+            ),
+            "publish_time": pd.to_datetime(
+                [r.get("publishTime") for r in wind_rows], errors="coerce", utc=True
+            ),
+            "generation": pd.to_numeric(
+                [r.get("generation") for r in wind_rows], errors="coerce"
+            ).astype("float64"),
         }
     )
     kept = df[(df["start_time"] >= cuts[0]) & (df["start_time"] < cuts[1])]
     n_out = len(kept)
     kept = kept.dropna(subset=["start_time", "generation"]).drop_duplicates()
-    print(f"FUELHH WIND: {len(wind_rows)} rows fetched -> {n_out} in fetch window -> {len(kept)} after dropna/naive-dedup", flush=True)
+    print(
+        f"FUELHH WIND: {len(wind_rows)} rows fetched -> {n_out} in fetch window -> {len(kept)} after dropna/naive-dedup",
+        flush=True,
+    )
     return kept[["start_time", "generation"]].sort_values("start_time").reset_index(drop=True)
 
 

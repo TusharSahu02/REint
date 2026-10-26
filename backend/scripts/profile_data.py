@@ -26,7 +26,9 @@ def coverage_check(forecasts: pd.DataFrame) -> None:
     full = 0
     delivery = date(2026, 1, 2)
     while delivery <= date(2026, 2, 1):
-        cutoff = datetime.combine(delivery - timedelta(days=1), CUTOFF_LOCAL_TIME, tzinfo=zone).astimezone(ZoneInfo("UTC"))
+        cutoff = datetime.combine(
+            delivery - timedelta(days=1), CUTOFF_LOCAL_TIME, tzinfo=zone
+        ).astimezone(ZoneInfo("UTC"))
         chosen = forecasts[forecasts["publish_time"] <= pd.Timestamp(cutoff)]
         if chosen.empty:
             print(f"  D={delivery} cutoff={cutoff:%Y-%m-%T}Z: NO PUBLISH CYCLE <= cutoff")
@@ -35,7 +37,9 @@ def coverage_check(forecasts: pd.DataFrame) -> None:
             latest = chosen["publish_time"].max()
             cycle = chosen[chosen["publish_time"] == latest]
             local_day_start = datetime.combine(delivery, datetime.min.time(), tzinfo=zone)
-            local_day_end = datetime.combine(delivery + timedelta(days=1), datetime.min.time(), tzinfo=zone)
+            local_day_end = datetime.combine(
+                delivery + timedelta(days=1), datetime.min.time(), tzinfo=zone
+            )
             slot_stamps = pd.date_range(
                 local_day_start.astimezone(ZoneInfo("UTC")),
                 local_day_end.astimezone(ZoneInfo("UTC")),
@@ -44,7 +48,9 @@ def coverage_check(forecasts: pd.DataFrame) -> None:
             )
             covered = int(cycle["start_time"].isin(slot_stamps).sum())
             status = "OK" if covered == 24 else "SHORT"
-            print(f"  D={delivery} cutoff={cutoff:%Y-%m-%d %H:%MZ}: publish={latest} covered={covered}/24 {status}")
+            print(
+                f"  D={delivery} cutoff={cutoff:%Y-%m-%d %H:%MZ}: publish={latest} covered={covered}/24 {status}"
+            )
             if covered == 24:
                 full += 1
             else:
@@ -78,11 +84,15 @@ def main() -> None:
     gaps = pd.Series(sorted_publish).diff().dropna().dt.total_seconds() / 3600
     print("\n== forecasts: publish cadence ==")
     print(f"distinct publish_time values: {distinct_publish}")
-    print(f"gap hours between consecutive distinct publish times: "
-          f"min {gaps.min():.2f}, median {gaps.median():.2f}, max {gaps.max():.2f}")
+    print(
+        f"gap hours between consecutive distinct publish times: "
+        f"min {gaps.min():.2f}, median {gaps.median():.2f}, max {gaps.max():.2f}"
+    )
     print("gap frequency (hours -> count):", gaps.value_counts().sort_index().to_dict())
-    print(f"typical rows per publish cycle: min {publish_counts.min()}, "
-          f"median {publish_counts.median()}, max {publish_counts.max()}")
+    print(
+        f"typical rows per publish cycle: min {publish_counts.min()}, "
+        f"median {publish_counts.median()}, max {publish_counts.max()}"
+    )
 
     horizons = (valid.start_time - valid.publish_time).dt.total_seconds() / 3600
     print("\n== forecasts: horizon hours (start_time - publish_time) ==")
