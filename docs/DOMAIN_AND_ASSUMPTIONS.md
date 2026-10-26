@@ -49,9 +49,44 @@ Naive forecast for a `startTime` = the forecast with the greatest `publishTime` 
 - Do not interpolate or fill. Exclude slots lacking either side from metrics, and count them.
 - Verify there are 48 slots per day (46/50 on DST change days, not in scope for January).
 
-## Verified API facts (fill in during M1)
-- [ ] FUELHH endpoint, params, sample response
-- [ ] WINDFOR endpoint, params, sample response
-- [ ] Forecast horizon range observed (min/max hours)
-- [ ] Publish frequency observed
-- [ ] Any gaps in January 2026 data
+## Verified API facts
+
+Verified against the live OpenAPI spec (`https://data.elexon.co.uk/swagger/v1/swagger.json`, discovered from the JS bundle of `https://bmrs.elexon.co.uk/api-documentation`) and real responses fetched 2026-10-26.
+
+### Base URL
+`https://data.elexon.co.uk/bmrs/api/v1` — public, no API key.
+
+### FUELHH (actual generation by fuel type)
+- Path: `GET /datasets/FUELHH/stream`
+- Verified params: `settlementDateFrom` / `settlementDateTo` (format `YYYY-MM-DD`), `settlementPeriod` (array of int, optional), `fuelType` (array of string, e.g. `WIND`); also `publishDateTimeFrom/To` (ISO 8601 with `Z`).
+- Fields per row: `dataset, publishTime, startTime, settlementDate, settlementPeriod, fuelType, generation`.
+- January-2026 actuals observed: 1536 rows (WIND, 2026-01-01 → 2026-02-01 inclusive, 48 half-hour slots/day), every `startTime` unique, no duplicates.
+- `publishTime = startTime + 30 min` for every observed row (actuals published right after each period).
+- Row order is newest-first.
+- Sample row:
+```json
+{"dataset":"FUELHH","publishTime":"2026-02-01T23:30:00Z","startTime":"2026-02-01T23:00:00Z","settlementDate":"2026-02-01","settlementPeriod":47,"fuelType":"WIND","generation":5130}
+```
+
+### WINDFOR (national wind forecast)
+- Path: `GET /datasets/WINDFOR/stream`
+- Verified params: `publishDateTimeFrom` / `publishDateTimeTo` (ISO 8601 with `Z`). No settlement-date filters.
+- Fields per row: `dataset, publishTime, startTime, generation`.
+- **Row granularity is HOURLY**: across all 18,104 rows for January 2026, not a single `startTime` had minutes=30. StartTimes run hourly (e.g. `21:00, 22:00, 23:00`).
+- Publish cycle: exactly 73 rows per `publishTime` (a rolling ~72h horizon window), and every row of a cycle shares one `publishTime`. January 2026 shows 248 distinct cycles; consecutive-cycle gaps are irregular and only ever 120 / 180 / 240 minutes (plus two one-off 175/185-min gaps), i.e. cycles are NOT on a fixed half-hourly schedule.
+- A ~1-hour publish window returned `[]` (unreliable below ~day-scale); use **day-size chunks** (`from` = day 00:00Z) for fetching. One month ≈ 18k rows per chunked month is fine.
+- Sample row:
+```json
+{"dataset":"WINDFOR","publishTime":"2026-01-01T22:30:00Z","startTime":"2025-12-31T21:00:00Z","generation":19498}
+```
+
+### Inconsistency discovered (needs owner decision before M2)
+- DOMAIN doc expected half-hourly forecasts: **reality is hourly** WINDFOR. Proposal: distribute the hourly forecast equally to both half-hour slots (`HH:00` covers the whole hour, wind MW is average power over the hour). → decision slots still 48/day, slot-level forecast = hourly MW.
+- WINDFOR horizon: each cycle spans startTime up to ~3 days ahead of publish (M1 profiling script will compute exact min/median/max horizon in hours).
+
+### Fetching rules (verified)
+- All datetimes ISO 8601 UTC with `Z` suffix (400 "DateTime should be in ISO format" otherwise).
+- FUELHH: filter `fuelType=WIND`; dates by settlement window.
+- WINDFOR: chunk by published-day (00:00Z → next 00:00Z), range 2025-12-28 → 2026-02-01 per fetch win.
+- Drop exact duplicate rows after fetch; never fill missing values.
+- No rate limit observed at the explore pace used (single calls, seconds apart). Keep fetch polite: chunked days, small sleep between requests.
