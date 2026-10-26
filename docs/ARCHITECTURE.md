@@ -36,8 +36,9 @@ Design principles: pure core logic, thin I/O layer, explicit data-quality counts
 3. Returns 48 rows + summary + data-quality counts.
 
 ## Deployment topology
-- Backend: Docker container on Heroku (container stack, `heroku.yml`), listening on `$PORT`.
-- Frontend: static build on Vercel; `VITE_API_BASE_URL` points to the Heroku backend.
+- Backend: Docker container listening on `$PORT` (`backend/Dockerfile`), deployed free-tier
+  to Google Cloud Run or Render (`render.yaml`).
+- Frontend: static build on Cloudflare Pages or Vercel (`frontend/vercel.json`); `VITE_API_BASE_URL` points to the backend.
 - Local: `docker-compose.yml` runs both (backend :8000, frontend :3000 via nginx).
 
 ## Key engineering practices (for the tech review video)

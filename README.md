@@ -41,7 +41,7 @@ The accuracy dashboard shows a deliberately **naive** comparison — the latest 
 │       ├── hooks/useApi.ts    # TanStack Query hooks
 │       └── pages/             # DecisionView, Accuracy, Methodology
 ├── docker-compose.yml         # full stack locally (backend :8000, frontend :3000)
-├── heroku.yml                 # backend container deploy
+├── render.yaml                # backend free web service (Render blueprint)
 └── docs/                      # original task brief, PRD, API spec, domain assumptions, deployment
 ```
 
@@ -77,7 +77,12 @@ docker compose up --build
 
 ## Deployed app
 
-Not yet deployed from this repository snapshot — see `docs/DEPLOYMENT.md` for the one-command backend (Heroku container) and frontend (Vercel) steps, and the incognito verification checklist.
+Not yet deployed from this repository snapshot. Free-tier deployment paths (no card
+required: Vercel + Render; no sleep and no card charges: Cloudflare Pages + Google
+Cloud Run; single-service: FastAPI serving the built SPA) are documented step by step in
+`docs/DEPLOYMENT.md`, together with the CORS and `VITE_API_BASE_URL` settings and the
+incognito verification checklist. `render.yaml` and `frontend/vercel.json` are ready in
+the repo.
 
 ## API
 

@@ -1,0 +1,15 @@
+# Render blueprint: free web service for the FastAPI backend.
+# Deploy with: https://render.com/deploy?repo=<your-github-repo>
+services:
+  - type: web
+    name: wind-forecast-monitor-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: CORS_ORIGINS
+        # pydantic-settings parses this env var as JSON.
+        # Replace with your deployed frontend origin, e.g. https://wind-forecast-monitor.vercel.app
+        value: '["http://localhost:5173", "http://localhost:3000"]'
