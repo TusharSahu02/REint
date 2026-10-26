@@ -18,6 +18,7 @@
   - Verdict recorded in session log: H2 (scope/definition mismatch WINDFOR vs FUELHH WIND) primary, H3 (curtailment/over-forecast) secondary contributor. No code changes.
 - Next: M4 frontend.
 - M4 DONE: Decision view live (committed). api/types.ts + api/client.ts (VITE_API_BASE_URL, default :8000); hooks/useApi.ts (TanStack Query); components: ForecastChart (step-line forecast vs actual, London-hour x axis, publish time in tooltip), DataQualityBanner, Layout (nav); pages/DecisionView (date + cutoff controls in URL params, KPI cards MAE/RMSE/bias/buffer, snapshot line, 48-slot table with flags). Vite template boilerplate replaced; date/cutoff out-of-range + backend-down states. Strict TS; build + oxlint clean; page checked in browser (matches API numbers for 2026-01-15). Next: M5 accuracy dashboard.
+- M5 DONE: Accuracy dashboard live (committed). pages/Accuracy.tsx — range controls (start/end/basis in URL params), KPI cards (n/MAE/RMSE/bias/nMAE%/P90/P95), leakage card (decision vs naive table + per-day MAE bars + plain-language caption), forecast-vs-actual timeseries, error histogram (rounded bin labels), by-hour-of-day and by-horizon MAE/bias bars. Basis toggle hides naive card on all_horizons and switches overall (n 28,814). Build + oxlint clean; browser-verified numbers match M3 baseline (MAE 2,042 / bias 1,747.9 / naive 1,666.8). Next: M6 decision aid + methodology.
 
 ## M3 plan
 - config.py: computed delivery_start/end properties (decision + 1 day), env-overridable unchanged.

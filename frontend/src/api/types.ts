@@ -39,3 +39,64 @@ export interface AppConfig {
   delivery_start: string
   delivery_end: string
 }
+
+export type Basis = 'decision' | 'all_horizons'
+
+export interface AccuracyOverall {
+  n: number
+  mae_mw: number | null
+  rmse_mw: number | null
+  bias_mw: number | null
+  nmae_pct: number | null
+  p50_abs_error_mw: number | null
+  p90_abs_error_mw: number | null
+  p95_abs_error_mw: number | null
+  n_missing_forecast: number
+  n_missing_actual: number
+}
+
+export interface AccuracyByDay {
+  delivery_date: string
+  mae_mw: number | null
+  naive_mae_mw: number | null
+  bias_mw: number | null
+  n: number
+}
+
+export interface TimeseriesPoint {
+  start_time: string
+  forecast_mw: number | null
+  actual_mw: number | null
+}
+
+export interface HistogramBin {
+  bin_start_mw: number
+  bin_end_mw: number
+  count: number
+}
+
+export interface HourEntry {
+  hour: number
+  mae_mw: number | null
+  bias_mw: number | null
+  n: number
+}
+
+export interface HorizonEntry {
+  horizon_bucket_hours: string
+  mae_mw: number | null
+  bias_mw: number | null
+  n: number
+}
+
+export interface AccuracyResponse {
+  range: { start: string; end: string }
+  basis: Basis
+  overall: AccuracyOverall
+  naive_overall: AccuracyOverall | null
+  by_day: AccuracyByDay[]
+  timeseries: TimeseriesPoint[]
+  error_histogram: HistogramBin[]
+  by_hour_of_day: HourEntry[]
+  by_horizon: HorizonEntry[]
+}

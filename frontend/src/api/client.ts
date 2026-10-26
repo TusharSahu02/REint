@@ -1,4 +1,4 @@
-import type { AppConfig, DecisionForecastResponse } from './types'
+import type { AccuracyResponse, AppConfig, Basis, DecisionForecastResponse } from './types'
 
 const BASE: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -25,6 +25,17 @@ export const fetchDecision = (
   const params = new URLSearchParams({ date })
   if (cutoff) params.set('cutoff', cutoff)
   return getJson<DecisionForecastResponse>(`/api/decision-forecast?${params}`)
+}
+
+export const fetchAccuracy = (
+  start: string,
+  end: string,
+  basis: Basis,
+  cutoff: string | null,
+): Promise<AccuracyResponse> => {
+  const params = new URLSearchParams({ start, end, basis })
+  if (cutoff) params.set('cutoff', cutoff)
+  return getJson<AccuracyResponse>(`/api/accuracy?${params}`)
 }
 
 export const apiBase = BASE

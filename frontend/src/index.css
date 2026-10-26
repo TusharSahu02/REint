@@ -120,13 +120,18 @@ main {
   color: var(--muted);
 }
 
-.controls input {
+.controls input,
+.controls select {
   font: inherit;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg);
   color: var(--text);
+}
+
+.naive {
+  border-left: 4px solid var(--warn-border);
 }
 
 .banner {
