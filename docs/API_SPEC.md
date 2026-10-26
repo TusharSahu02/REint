@@ -60,3 +60,14 @@ Re-fetches from Elexon and reloads memory. Returns counts.
 
 ## Errors
 `400` bad params (out of range date, bad cutoff), `404` no data for date, `500` unexpected. Body: `{ "detail": "..." }`.
+
+## API behaviour notes
+- All fields may be `null` where a value is unavailable (missing forecast/actual, empty metrics). Empty metric aggregates return `null` numbers, not NaN.
+- `/api/health` counts are raw parquet rows: `forecasts` counts hourly WINDFOR rows (20,440), before doubling by the step-hold expansion to half-hourly.
+- `/api/accuracy` `by_hour_of_day` always has 24 entries (hours 0–23 Europe/London); hours with no valid pairs have `n: 0` and `null` metrics.
+- `by_horizon` counts half-hourly rows (step-hold expanded forecasts with `horizon >= 0`, both forecast and actual present), same in both bases.
+- `error_histogram` is `[]` when there is no data or all errors are identical.
+- Expanding-window buffer: if fewer than 30 positive errors exist before the requested day, the full delivery period is used with `buffer_basis: "full_period_fallback"`. If that also yields none, `suggested_buffer_mw` is null and `buffer_sample_size` is 0.
+- `cutoff` affects decision-derived results only (by_day, timeseries, overall/naive_overall on basis=decision); `by_horizon` is cutoff-independent.
+- `404` is returned only when a valid requested range contains no slot data at all.
+- Unexpected server errors log the stack trace server-side and return `{ "detail": "internal error" }`.

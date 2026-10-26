@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
     decision_start: date = date(2026, 1, 1)
     decision_end: date = date(2026, 1, 31)
+
+    @property
+    def delivery_start(self) -> date:
+        return self.decision_start + timedelta(days=1)
+
+    @property
+    def delivery_end(self) -> date:
+        return self.decision_end + timedelta(days=1)
 
 
 @lru_cache
