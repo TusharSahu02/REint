@@ -9,7 +9,15 @@
   - Commands: pytest → 25 passed (15 M2 + 10 M3); ruff check + format --check clean; pinned requirements (uv pip install), pytest re-run green; live uvicorn checks pass (config/decision-forecast/accuracy JSON, 400 for 2026-03-01), /api/accuracy timing first 0.30s / cached 0.26s.
   - Real-data check (uncommitted scratch, /tmp/check_real_data.py): 31×48 rows, 0 missing_forecast, publish ≤ cutoff everywhere; decision n=1488 mae=2041.96 nmae=18.10% bias=+1747.9; naive n=1488 mae=1666.77 nmae=14.77% bias=+1491.6 → naive < decision as expected.
   - Behaviour notes added to docs/API_SPEC.md (health counts are raw pre-expansion rows; by_hour always 24 entries; buffer fallback semantics; 404 only for truly empty ranges).
+- M3.5 DONE (4d0f0c3): read-only bias diagnostic (scripts/diagnose_bias.py, committed).
+  - Levels: decision mean_fcst/mean_actual = 1.155 (bias +1747.9, corr 0.930); naive 1.132 (+1491.6, corr 0.959).
+  - By horizon incl. negative: bias stays positive at every horizon (best [0,6): +1457.0; deep hindsight (-inf,-12): +1878.8) with ratio ~1.13-1.17 — NOT a leak/timing artefact.
+  - Shift test: MAE minimum at k=-4 (−2h) for decision (1960.5 vs 2042.0, −4%), bias unchanged; hourly-only :00 k=0 MAE 2022.5 vs 2042.0 → H1/H4 unsupported.
+  - By actual level: U-shaped bias (mid-levels +940..1186; extremes +2044..2424); 27/31 days positive.
+  - FUELHH scope: WIND is a single fuel type, no other name contains WIND. WINDFOR semantics: naive keeps last publish (Jan-15 22:30, horizon −10.5h).
+  - Verdict recorded in session log: H2 (scope/definition mismatch WINDFOR vs FUELHH WIND) primary, H3 (curtailment/over-forecast) secondary contributor. No code changes.
 - Next: M4 frontend.
+- M4 DONE: Decision view live (committed). api/types.ts + api/client.ts (VITE_API_BASE_URL, default :8000); hooks/useApi.ts (TanStack Query); components: ForecastChart (step-line forecast vs actual, London-hour x axis, publish time in tooltip), DataQualityBanner, Layout (nav); pages/DecisionView (date + cutoff controls in URL params, KPI cards MAE/RMSE/bias/buffer, snapshot line, 48-slot table with flags). Vite template boilerplate replaced; date/cutoff out-of-range + backend-down states. Strict TS; build + oxlint clean; page checked in browser (matches API numbers for 2026-01-15). Next: M5 accuracy dashboard.
 
 ## M3 plan
 - config.py: computed delivery_start/end properties (decision + 1 day), env-overridable unchanged.
