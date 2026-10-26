@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import DecisionView from './pages/DecisionView'
 import Accuracy from './pages/Accuracy'
+import Methodology from './pages/Methodology'
 
 export default function App() {
   return (
@@ -9,10 +10,8 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<DecisionView />} />
         <Route path="accuracy" element={<Accuracy />} />
-        <Route
-          path="*"
-          element={<p className="card">This section arrives in a later milestone.</p>}
-        />
+        <Route path="methodology" element={<Methodology />} />
+        <Route path="*" element={<p className="card">Not found.</p>} />
       </Route>
     </Routes>
   )

@@ -11,17 +11,26 @@ interface ChartPoint {
   time: string
   forecast: number | null
   actual: number | null
+  conservative: number | null
   publish: string | null
 }
 
 const fmt = (v: number | null | undefined): string =>
   v == null ? '–' : v.toLocaleString('en-GB', { maximumFractionDigits: 1 })
 
-export default function ForecastChart({ rows }: { rows: DecisionRow[] }) {
+export default function ForecastChart({
+  rows,
+  bufferMw,
+}: {
+  rows: DecisionRow[]
+  bufferMw: number | null
+}) {
   const data: ChartPoint[] = rows.map((r) => ({
     time: timeFmt.format(new Date(r.start_time)),
     forecast: r.forecast_mw,
     actual: r.actual_mw,
+    conservative:
+      r.forecast_mw != null && bufferMw != null ? r.forecast_mw - bufferMw : null,
     publish: r.publish_time,
   }))
   const ticks = data.filter((_, i) => i % 6 === 0).map((d) => d.time)
@@ -45,6 +54,7 @@ export default function ForecastChart({ rows }: { rows: DecisionRow[] }) {
                 <b>{point.time}</b>
                 <div>Forecast: {fmt(point.forecast)} MW</div>
                 <div>Actual: {fmt(point.actual)} MW</div>
+                <div>Conservative: {fmt(point.conservative)} MW</div>
                 <div>Publish: {point.publish ?? 'no forecast'}</div>
               </div>
             )
@@ -66,6 +76,16 @@ export default function ForecastChart({ rows }: { rows: DecisionRow[] }) {
           name="Actual (MW)"
           stroke="#b45309"
           strokeWidth={2}
+          dot={false}
+          connectNulls={false}
+        />
+        <Line
+          type="stepAfter"
+          dataKey="conservative"
+          name="Conservative wind (MW)"
+          stroke="#6b7280"
+          strokeWidth={2}
+          strokeDasharray="6 4"
           dot={false}
           connectNulls={false}
         />

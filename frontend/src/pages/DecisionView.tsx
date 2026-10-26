@@ -125,7 +125,18 @@ export default function DecisionView() {
               Snapshot as of {decision.data.cutoff_local}; latest publish used:{' '}
               {decision.data.summary.latest_publish_time_used ?? 'none'}
             </p>
-            <ForecastChart rows={rows} />
+            <ForecastChart
+              rows={rows}
+              bufferMw={decision.data.summary.suggested_buffer_mw}
+            />
+            {decision.data.summary.suggested_buffer_mw != null && (
+              <p className="muted">
+                Conservative wind = forecast − buffer ({num(decision.data.summary.suggested_buffer_mw)}{' '}
+                MW = P90 of positive errors from the {decision.data.summary.buffer_sample_size} slots on days
+                before this one{decision.data.summary.buffer_basis === 'full_period_fallback' ? ', full-period fallback' : ''}).
+                Indicative only.
+              </p>
+            )}
           </section>
 
           <section className="card">
