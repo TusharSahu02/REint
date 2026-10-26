@@ -12,5 +12,8 @@ dist/
 
 # misc
 *.parquet
+# the committed January 2026 snapshot must ship with the repo (Render/Cloud Run build it in)
+!backend/data/actuals.parquet
+!backend/data/forecasts.parquet
 .DS_Store
 .serena/
