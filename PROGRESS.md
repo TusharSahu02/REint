@@ -10,6 +10,7 @@
 7. Run M0 VERIFY commands, show real output (done)
 
 ## Log
+- API facts verified pre-M1 (OpenAPI spec + live calls), recorded in docs/DOMAIN_AND_ASSUMPTIONS.md "Verified API facts". Key surprise: WINDFOR is HOURLY (not half-hourly) with irregular 2/3/4h publish cycles; owner decision pending on slot mapping before M2. Commit 879dcc1.
 - M0: DONE. Scaffold committed. Backend health endpoint verified ({"status":"ok"}), ruff clean, frontend builds.
 - Deviation: system python3.12 unavailable; local venv uses Python 3.10.16 (Dockerfile at M7 will pin 3.12-slim per DEPLOYMENT spec, so deploy parity is unaffected).
 - Note: venv bootstrapped without ensurepip (python3.10-venv pkg missing on host); pip installed via get-pip.py into venv.
