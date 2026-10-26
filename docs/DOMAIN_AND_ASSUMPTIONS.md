@@ -80,9 +80,19 @@ Verified against the live OpenAPI spec (`https://data.elexon.co.uk/swagger/v1/sw
 {"dataset":"WINDFOR","publishTime":"2026-01-01T22:30:00Z","startTime":"2025-12-31T21:00:00Z","generation":19498}
 ```
 
+### Snapshot profile (measured from the committed parquet files, M1)
+- `actuals.parquet`: 1488 rows (WIND actuals 2026-01-01 00:00Z → 2026-01-31 23:30Z, 48 half-hour slots, 31 days), **0 missing slots**, `publishTime = startTime + 30 min` everywhere.
+- `forecasts.parquet`: 20440 rows, startTimes 2025-12-27T21:00Z → 2026-02-02T21:00Z (rolling ~72h window), publishTimes 2025-12-28T02:30Z → 2026-01-31T22:30Z.
+- 280 distinct publish cycles; rows per cycle exactly 73; consecutive-cycle gaps in hours: 2.0 ×104, ~2.92 ×1, 3.0 ×70, ~3.08 ×1, 4.0 ×103 (median 3h). Never half-hourly cadence.
+- Horizon (start_time − publish_time, hours): min **−25.5** (rows published after the fact), median **21.5**, max **66.5**.
+- 0 duplicate (start_time, publish_time) pairs; no NaN values anywhere after normalisation.
+
+### Snapshot fetch windows (implemented in scripts/fetch_data.py)
+- WINDFOR by publish-day chunk 2025-12-28 → 2026-02-01T00:00Z exclusive (35 requests × 584 rows).
+- FUELHH `settlementDateFrom=2026-01-01&settlementDateTo=2026-02-01&fuelType=WIND`, then kept only `startTime < 2026-02-01T00:00Z` → 1488 rows.
+
 ### Inconsistency discovered (needs owner decision before M2)
-- DOMAIN doc expected half-hourly forecasts: **reality is hourly** WINDFOR. Proposal: distribute the hourly forecast equally to both half-hour slots (`HH:00` covers the whole hour, wind MW is average power over the hour). → decision slots still 48/day, slot-level forecast = hourly MW.
-- WINDFOR horizon: each cycle spans startTime up to ~3 days ahead of publish (M1 profiling script will compute exact min/median/max horizon in hours).
+- DOMAIN doc expected half-hourly forecasts: **reality is hourly** WINDFOR. Proposal: each hourly `startTime` applies to that whole hour; both half-hour slots inherit the hourly MW (wind MW is average power over the hour). Effect: slot-level forecast has 24 distinct values/day. → decision slots still 48/day. Await owner confirmation before M2 metrics.
 
 ### Fetching rules (verified)
 - All datetimes ISO 8601 UTC with `Z` suffix (400 "DateTime should be in ISO format" otherwise).
