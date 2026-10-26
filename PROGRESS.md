@@ -21,5 +21,12 @@
 - tests/test_api.py: 14+ tests vs real parquet, TestClient context manager (lifespan runs).
 - Verify: pytest, ruff, live curl checks, accuracy timing; real-data script in /tmp (not committed); pin requirements; commit "feat: backend API with tests".
 
+## M3.5 plan
+- Read-only bias diagnostic; no changes to services/routes/tests.
+- backend/scripts/diagnose_bias.py (committed): load parquets, expand, decision+naive frames for 31 days @09:00 via existing services.
+- Sections: 1 levels+ratio+corr; 2 error vs horizon incl. negative buckets; 3 shift test k=-6..6 (30-min) + hourly :00 shifts ±3h, decision & naive; 4 by-actual-level bins; 5 by London hour; 6 by day (count positive); 7 sample day 2026-01-15; 8 one FUELHH network call (no fuelType filter, 2026-01-15) scope check; 9 raw WINDFOR semantics for 2026-01-15T12:00Z.
+- Rank H1-H4 hypotheses in final interpretation from printed evidence.
+- Verify: run script, ruff check/format clean, pytest still 25, git status shows only script+PROGRESS; commit "chore: add bias diagnostic script".
+
 ## Open issues
 - none
