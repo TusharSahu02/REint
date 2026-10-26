@@ -2,7 +2,7 @@
 # Deploy with: https://render.com/deploy?repo=<your-github-repo>
 services:
   - type: web
-    name: wind-forecast-monitor-api
+    name: REint-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
