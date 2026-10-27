@@ -17,3 +17,6 @@ dist/
 !backend/data/forecasts.parquet
 .DS_Store
 .serena/
+
+# playwright mcp artefacts
+.playwright-mcp/
